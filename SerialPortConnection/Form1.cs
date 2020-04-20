@@ -64,7 +64,7 @@ namespace SerialPortConnection
                     }                  
             }
 
-            //预置波特率
+            //预置起始位
             switch (Profile.G_DATABITS)
             {
                 case "5":
@@ -84,8 +84,9 @@ namespace SerialPortConnection
                         MessageBox.Show("数据位预置参数错误。");
                         return;
                     }
-
             }
+
+            
             //预置停止位
             switch (Profile.G_STOP)
             {
@@ -126,7 +127,7 @@ namespace SerialPortConnection
 
             //检查是否含有串口
             string[] str = SerialPort.GetPortNames();
-            if (str == null)
+            if (str.Length == 0)
             {
                 MessageBox.Show("本机没有串口！", "Error");
                 return;
@@ -140,20 +141,17 @@ namespace SerialPortConnection
             }
 
             //串口设置默认选择项
-            cbSerial.SelectedIndex = 1;         //note：获得COM9口，但别忘修改
-            //cbBaudRate.SelectedIndex = 5;
-           // cbDataBits.SelectedIndex = 3;
-           // cbStop.SelectedIndex = 0;
-          //  cbParity.SelectedIndex = 0;
-            sp1.BaudRate = 9600;
+            cbSerial.SelectedIndex = 0;         //note：获得COM9口，但别忘修改
 
             Control.CheckForIllegalCrossThreadCalls = false;    //这个类中我们不检查跨线程的调用是否合法(因为.net 2.0以后加强了安全机制,，不允许在winform中直接跨线程访问控件的属性)
-            sp1.DataReceived += new SerialDataReceivedEventHandler(sp1_DataReceived);
-            //sp1.ReceivedBytesThreshold = 1;
+
 
             radio1.Checked = true;  //单选按钮默认是选中的
             rbRcvStr.Checked = true;
 
+            sp1.BaudRate = 9600;
+            sp1.DataReceived += new SerialDataReceivedEventHandler(sp1_DataReceived);
+            //sp1.ReceivedBytesThreshold = 1;
             //准备就绪              
             sp1.DtrEnable = true;
             sp1.RtsEnable = true;
@@ -187,20 +185,16 @@ namespace SerialPortConnection
                         sp1.Read(receivedData, 0, receivedData.Length);         //读取数据
                         //string text = sp1.Read();   //Encoding.ASCII.GetString(receivedData);
                         sp1.DiscardInBuffer();                                  //清空SerialPort控件的Buffer
-                        //这是用以显示字符串
-                        //    string strRcv = null;
-                        //    for (int i = 0; i < receivedData.Length; i++ )
-                        //    {
-                        //        strRcv += ((char)Convert.ToInt32(receivedData[i])) ;
-                        //    }
-                        //    txtReceive.Text += strRcv + "\r\n";             //显示信息
-                        //}
-                        string strRcv = null;
-                        //int decNum = 0;//存储十进制
-                        for (int i = 0; i < receivedData.Length; i++) //窗体显示
+                        if (rbRcvStr.Checked)
                         {
-                          
-                            strRcv += receivedData[i].ToString("X2");  //16进制显示
+                            txtReceive.Text += Encoding.ASCII.GetString(receivedData) + "\r\n";
+                            return;
+                        }
+                        string strRcv = null;
+
+                        for (int i = 0; i < receivedData.Length; i++) //窗体显示
+                        {                         
+                            strRcv += receivedData[i].ToString("X2") + " ";  //16进制显示
                         }
                         txtReceive.Text += strRcv + "\r\n";
                     }
@@ -266,12 +260,12 @@ namespace SerialPortConnection
                     int decNum = 0;
                     if (strArray[i] == "")
                     {
-                        //ii--;     //加上此句是错误的，下面的continue以延缓了一个ii，不与i同步
+                   
                         continue;
                     }
                     else
                     {
-                         decNum = Convert.ToInt32(strArray[i], 16); //atrArray[i] == 12时，temp == 18 
+                         decNum = Convert.ToInt32(strArray[i], 16);  
                     }
                            
                    try    //防止输错，使其只能输入一个字节的字符
@@ -284,7 +278,6 @@ namespace SerialPortConnection
                        tmSend.Enabled = false;
                        return;
                    }
-
                    ii++;    
                 }
                 sp1.Write(byteBuffer, 0, byteBuffer.Length);
@@ -298,7 +291,7 @@ namespace SerialPortConnection
         //开关按钮
         private void btnSwitch_Click(object sender, EventArgs e)
         {
-            //serialPort1.IsOpen
+
             if (!sp1.IsOpen)
             {
                 try
@@ -425,7 +418,7 @@ namespace SerialPortConnection
                 Regex r = new Regex(patten);
                 Match m = r.Match(e.KeyChar.ToString());
 
-                if (m.Success )//&&(txtSend.Text.LastIndexOf(" ") != txtSend.Text.Length-1))
+                if (m.Success )
                 {
                     e.Handled = false;
                 }
@@ -433,7 +426,7 @@ namespace SerialPortConnection
                 {
                     e.Handled = true;
                 }
-            }//end of radio1
+            }
             else
             {
                 e.Handled = false;
@@ -488,11 +481,7 @@ namespace SerialPortConnection
                     break;
             }
 
-            //保存设置
-            // public static string G_BAUDRATE = "1200";//给ini文件赋新值，并且影响界面下拉框的显示
-            //public static string G_DATABITS = "8";
-            //public static string G_STOP = "1";
-            //public static string G_PARITY = "NONE";
+
             Profile.SaveProfile();
         }
 
@@ -514,8 +503,7 @@ namespace SerialPortConnection
             {
                 tmSend.Enabled = false;
                 MessageBox.Show("错误的定时输入！", "Error");
-            }
-            
+            }         
         }
 
         private void txtSecond_KeyPress(object sender, KeyPressEventArgs e)
